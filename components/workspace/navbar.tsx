@@ -13,7 +13,7 @@ export function Navbar() {
   if (!user) return null;
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 h-24 bg-[#171717]/40 backdrop-blur-2xl shadow-[0_4px_32px_rgba(0,0,0,0.2)]"
+    <nav className="fixed inset-x-0 top-0 z-40 h-16 bg-[#171717]/40 backdrop-blur-2xl shadow-[0_4px_32px_rgba(0,0,0,0.2)]"
       style={{
         boxShadow: "0 4px 30px rgba(0, 0, 0, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.05)"
       }}

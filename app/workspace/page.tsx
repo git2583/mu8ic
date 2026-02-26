@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/workspace/navbar";
 import { PromptBox } from "@/components/workspace/prompt-box";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Music, Clock, PlayCircle } from "lucide-react";
+import { Loader2, Music, Clock, PlayCircle, PauseCircle, X } from "lucide-react";
 
 type MusicTrack = {
   id: string;
@@ -16,6 +16,7 @@ type MusicTrack = {
   duration: number | null;
   status: string;
   created_at: string;
+  file_url?: string;
 };
 
 export default function WorkspacePage() {
@@ -25,6 +26,8 @@ export default function WorkspacePage() {
 
   const [musics, setMusics] = useState<MusicTrack[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -155,9 +158,31 @@ export default function WorkspacePage() {
                         <>
                           <Music className="w-10 h-10 text-white/20" />
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button className="h-12 w-12 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 transition-transform">
-                              <PlayCircle className="w-6 h-6 ml-1" />
+                            <button
+                              onClick={() => {
+                                if (track.file_url) {
+                                  setPlayingTrackId(playingTrackId === track.id ? null : track.id);
+                                } else {
+                                  setToastMessage("Audio URL is not available yet.");
+                                  setTimeout(() => setToastMessage(null), 3000);
+                                }
+                              }}
+                              className="h-12 w-12 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 transition-transform"
+                            >
+                              {playingTrackId === track.id ? (
+                                <PauseCircle className="w-6 h-6" />
+                              ) : (
+                                <PlayCircle className="w-6 h-6 ml-1" />
+                              )}
                             </button>
+                            {playingTrackId === track.id && track.file_url && (
+                              <audio
+                                src={track.file_url}
+                                autoPlay
+                                onEnded={() => setPlayingTrackId(null)}
+                                className="hidden"
+                              />
+                            )}
                           </div>
                         </>
                       )}
@@ -192,6 +217,28 @@ export default function WorkspacePage() {
 
       {/* Fixed Prompt Input at the bottom */}
       <PromptBox />
+
+      {/* Floating Centered Toast Message */}
+      <AnimatePresence>
+        {toastMessage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-[#2a2a2a] text-white/90 border border-white/10 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-4 pointer-events-auto"
+            >
+              <span className="text-sm font-medium">{toastMessage}</span>
+              <button
+                onClick={() => setToastMessage(null)}
+                className="text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
