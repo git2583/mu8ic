@@ -43,7 +43,7 @@ export default function AuthPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/workspace`,
       },
     });
     // The user will be redirected to google, so no need to stop loading state
