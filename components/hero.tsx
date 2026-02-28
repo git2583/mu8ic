@@ -15,7 +15,7 @@ export function Hero() {
         logoText="mu8ic"
         navLinks={navLinks}
         mainText="Generate royalty-free, AI-powered music tracks perfectly tailored for your YouTube videos — in seconds, not hours."
-        ctaLink="#"
+        ctaLink="/auth"
         imageSrc="https://ik.imagekit.io/fpxbgsota/image%2013.png?updatedAt=1753531863793"
         imageAlt="A creative artist composing music with AI."
         overlayText={{

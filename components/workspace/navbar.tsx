@@ -27,8 +27,8 @@ export function Navbar() {
         </div>
 
         {/* Center: Search Input */}
-        <div className="flex flex-1 justify-center px-4 max-w-2xl">
-          <div className="relative w-full">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-4 pointer-events-none">
+          <div className="relative w-full pointer-events-auto">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-6">
               <Search className="h-5 w-5 text-white/40" />
             </div>

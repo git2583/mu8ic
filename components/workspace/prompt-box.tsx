@@ -45,7 +45,6 @@ export function PromptBox() {
         title: currentPrompt.slice(0, 50) + (currentPrompt.length > 50 ? "..." : ""),
         user_id: user.id,
         prompt: currentPrompt,
-        status: "generating",
       }).select().single();
 
       if (insertError || !newMusic) {
@@ -70,26 +69,26 @@ export function PromptBox() {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptText }),
+        body: JSON.stringify({ prompt: promptText, musicId }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.url) {
         await supabase.from("musics").update({
-          status: "completed",
-          file_url: data.url
+          file_url: data.url,
         }).eq("id", musicId);
       } else {
-        console.error("Generation failed:", data.error);
+        console.error("Generation failed:", data.error || data);
         await supabase.from("musics").update({
-          status: "failed",
+          file_url: "FAILED",
         }).eq("id", musicId);
       }
+
     } catch (error) {
       console.error("Generation error:", error);
       await supabase.from("musics").update({
-        status: "failed",
+        file_url: "FAILED",
       }).eq("id", musicId);
     }
   };
@@ -103,14 +102,25 @@ export function PromptBox() {
 
   return (
     <>
-      <div className="fixed bottom-8 left-1/2 w-full max-w-3xl -translate-x-1/2 px-4 z-50">
+      <div className="fixed bottom-8 left-1/2 w-full max-w-3xl -translate-x-1/2 px-4 z-50 pointer-events-none">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="flex w-full flex-col gap-2 rounded-[2rem] bg-[#212121] px-5 py-4 shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-white/5"
+          initial={{ opacity: 0, scale: 0.95, y: 30 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+          className="pointer-events-auto flex w-full flex-col gap-3 rounded-2xl bg-[#121212]/80 backdrop-blur-3xl px-12 py-8 shadow-[0_30px_100px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-white/10 relative overflow-hidden group"
         >
-          <form onSubmit={handleSubmit} className="flex flex-col w-full">
+          {/* Ambient background glow inside the box */}
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+          <form onSubmit={handleSubmit} className="relative z-10 flex flex-col w-full">
+            {/* Title / Helper Text */}
+            <div className="mb-2 px-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+                Music Generation AI
+              </span>
+              <span className="text-xs text-white/30 font-medium">visoar/ace-step-1.5</span>
+            </div>
+
             {/* Text Input */}
             <textarea
               ref={textareaRef}
@@ -119,33 +129,33 @@ export function PromptBox() {
               onInput={handleInput}
               onKeyDown={handleKeyDown}
               disabled={isSubmitting}
-              placeholder={isSubmitting ? "Generating music..." : "Type your message here..."}
-              className="max-h-[200px] min-h-[44px] w-full resize-none bg-transparent py-2 text-[15px] leading-relaxed text-white/90 placeholder:text-white/40 focus:outline-none disabled:opacity-50"
+              placeholder={isSubmitting ? "Generating your masterpiece..." : "Describe the music you want to create (e.g. Upbeat electronic dance music) ..."}
+              className="max-h-[300px] min-h-[60px] w-full resize-none bg-transparent py-3 px-2 text-[18px] leading-relaxed text-white/95 placeholder:text-white/30 focus:outline-none disabled:opacity-50"
               rows={1}
             />
 
             {/* Bottom Bar: Action Icons & Submit */}
-            <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center justify-between mt-4 px-2">
               {/* Left Actions */}
               <div className="flex items-center text-white/40">
-                <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/5 hover:text-white transition-colors duration-200">
-                  <Paperclip size={18} />
+                <button type="button" className="flex h-12 w-12 items-center justify-center rounded-full hover:bg-white/10 hover:text-white transition-colors duration-200">
+                  <Paperclip size={20} />
                 </button>
 
-                <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/5 hover:text-white transition-colors duration-200">
-                  <Globe size={18} />
+                <button type="button" className="flex h-12 w-12 items-center justify-center rounded-full hover:bg-white/10 hover:text-white transition-colors duration-200">
+                  <Globe size={20} />
                 </button>
 
-                <div className="mx-2 h-4 w-[1px] bg-white/20" />
+                <div className="mx-3 h-5 w-[1px] bg-white/20" />
 
-                <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/5 hover:text-white transition-colors duration-200">
-                  <Hexagon size={18} />
+                <button type="button" className="flex h-12 w-12 items-center justify-center rounded-full hover:bg-white/10 hover:text-white transition-colors duration-200">
+                  <Hexagon size={20} />
                 </button>
 
-                <div className="mx-2 h-4 w-[1px] bg-white/20" />
+                <div className="mx-3 h-5 w-[1px] bg-white/20" />
 
-                <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/5 hover:text-white transition-colors duration-200">
-                  <Folder size={18} />
+                <button type="button" className="flex h-12 w-12 items-center justify-center rounded-full hover:bg-white/10 hover:text-white transition-colors duration-200">
+                  <Folder size={20} />
                 </button>
               </div>
 
@@ -153,15 +163,17 @@ export function PromptBox() {
               <button
                 type={prompt.trim() ? "submit" : "button"}
                 disabled={isSubmitting}
-                className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 active:scale-95 shadow-[0_0_15px_rgba(255,255,255,0.2)] disabled:opacity-70 disabled:scale-100 ${prompt.trim() ? "bg-[#333333] hover:bg-[#444444]" : "bg-white hover:scale-105"
+                className={`flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 active:scale-95 disabled:opacity-70 disabled:scale-100 ${prompt.trim()
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+                  : "bg-white hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                   }`}
               >
                 {isSubmitting ? (
-                  <Loader2 size={18} className="text-white animate-spin" />
+                  <Loader2 size={22} className="text-white animate-spin" />
                 ) : prompt.trim() ? (
-                  <Send size={18} className="text-white ml-0.5" />
+                  <Send size={20} className="text-white ml-0.5" />
                 ) : (
-                  <Mic size={20} className="text-black" />
+                  <Mic size={22} className="text-black" />
                 )}
               </button>
             </div>
