@@ -6,24 +6,26 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-export const maxDuration = 60; // Keep reasonable max duration for serverless
+export const maxDuration = 300; // Increase max duration for Replicate waiting
 
 export async function POST(request: Request) {
   try {
-    const { lyrics, caption, duration, musicId, userId } = await request.json();
+    const { lyrics, caption, duration, batch_size, musicId, userId } = await request.json();
 
     if (!caption && !lyrics) {
       return NextResponse.json({ error: 'Caption or lyrics are required' }, { status: 400 });
     }
 
-    // duration comes in as seconds (e.g., 30 to 180)
-    const durationSeconds = duration ? parseInt(duration) : 30;
+    const durationSeconds = duration ? parseInt(duration) : 60;
+    const batchSize = batch_size ? parseInt(batch_size) : 1;
 
     const input = {
       lyrics: lyrics || "",
       caption: caption || "Generate a high quality music track",
       duration: durationSeconds,
-      timeout_seconds: 30
+      batch_size: batchSize,
+      poll_interval: 3,
+      timeout_seconds: 1800
     };
 
     console.log(`[Replicate API] Generating visoar/ace-step-1.5:`, input);
@@ -33,62 +35,25 @@ export async function POST(request: Request) {
       { input }
     );
 
-    let audioUrl = "";
+    let audioUrls: string[] = [];
     if (output && typeof (output as any).url === 'function') {
-      audioUrl = (output as any).url();
-    } else if (Array.isArray(output) && output.length > 0) {
-      audioUrl = typeof output[0] === 'string' ? output[0] : (typeof output[0].url === 'function' ? output[0].url() : output[0]);
+      audioUrls.push((output as any).url());
+    } else if (Array.isArray(output)) {
+      audioUrls = output.map((o: any) => typeof o === 'string' ? o : (typeof o.url === 'function' ? o.url() : o));
     } else if (typeof output === 'string') {
-      audioUrl = output;
+      audioUrls.push(output);
     } else if (output && typeof output === 'object') {
-      audioUrl = (output as any).toString();
+      audioUrls.push((output as any).toString());
     }
 
-    if (!audioUrl) {
+    if (audioUrls.length === 0 || !audioUrls[0]) {
       throw new Error("No URL returned from Replicate");
     }
 
-    // Step 2: Download the audio file from Replicate
-    console.log(`[Storage] Downloading audio from Replicate URL...`);
-    const audioObj = await fetch(audioUrl);
-    if (!audioObj.ok) {
-      throw new Error("Failed to download generated audio from Replicate");
-    }
-    const audioBuffer = await audioObj.arrayBuffer();
+    console.log(`[Success] Generated ${audioUrls.length} Replicate URLs:`, audioUrls);
 
-    // Step 3: Upload to Supabase Storage
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Supabase credentials not found on server.");
-    }
-    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
-
-    const fileName = `${userId || 'anonymous'}/${musicId || Date.now()}.mp3`;
-
-    console.log(`[Storage] Uploading audio to Supabase Storage: ${fileName}`);
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-      .from('musics')
-      .upload(fileName, audioBuffer, {
-        contentType: 'audio/mpeg',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error("[Storage] Upload error:", uploadError);
-      throw new Error(`Supabase upload failed: ${uploadError.message}`);
-    }
-
-    // Get the public URL of the uploaded file
-    const { data: publicUrlData } = supabaseAdmin.storage
-      .from('musics')
-      .getPublicUrl(fileName);
-
-    const finalUrl = publicUrlData.publicUrl;
-
-    console.log(`[Success] Final audio URL:`, finalUrl);
-
-    return NextResponse.json({ success: true, url: finalUrl });
+    // Return the raw audio URLs from Replicate to be uploaded via UI
+    return NextResponse.json({ success: true, urls: audioUrls });
   } catch (error: any) {
     console.error('Replicate error:', error);
     return NextResponse.json({ error: error.message || 'Error generating music via Replicate' }, { status: 500 });

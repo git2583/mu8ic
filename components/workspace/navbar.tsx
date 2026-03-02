@@ -27,14 +27,14 @@ export function Navbar() {
         </div>
 
         {/* Center: Search Input */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-4 pointer-events-none">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md px-4 pointer-events-none">
           <div className="relative w-full pointer-events-auto">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-6">
-              <Search className="h-5 w-5 text-white/40" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+              <Search className="h-4 w-4 text-white/40" />
             </div>
             <input
               type="text"
-              className="block w-full h-14 rounded-full border border-white/10 bg-white/5 py-4 pl-14 pr-6 text-base text-white placeholder-white/30 outline-none transition-all hover:bg-white-[0.07] focus:border-white/20 focus:bg-white/10 focus:ring-2 focus:ring-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]"
+              className="block w-full h-10 rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white placeholder-white/30 outline-none transition-all hover:bg-white-[0.07] focus:border-white/20 focus:bg-white/10 focus:ring-2 focus:ring-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]"
               placeholder="Search for tracks, moods, or genres..."
             />
           </div>

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Repeat, Volume2, VolumeX, Download } from "lucide-react";
+import { Play, Pause, Repeat, Volume2, VolumeX, Download, SkipBack, SkipForward, Music } from "lucide-react";
 
 interface AudioPlayerProps {
   track: {
     id: string;
-    caption: string;
+    title: string;
     lyrics?: string;
     duration: number | null;
     file_url?: string;
@@ -114,97 +114,101 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto flex flex-col p-6 rounded-3xl bg-[#1b1b1b] shadow-2xl border border-white/5">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#171717]/80 backdrop-blur-2xl border-t border-white/5 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] transform translate-y-0 transition-transform duration-300">
       {track.file_url && (
         <audio
           ref={audioRef}
           src={track.file_url}
           loop={isLooping}
+          autoPlay
           className="hidden"
-        // We assume autoPlay is off by default so the user presses play
         />
       )}
 
-      {/* Header Info */}
-      <div className="mb-6 pl-2">
-        <h3 className="text-[18px] font-medium text-white/90 tracking-wide mb-1 select-none">
-          {track.caption || "Untitled AI Music"}
-        </h3>
-        <p className="text-[14px] text-white/40 font-medium select-none">AI Generated</p>
+      {/* Optional: YouTube Music style top-edge progress bar (uncomment if preferred over center bar)
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/5 cursor-pointer group/progress" onClick={handleSeek}>
+          <div className="h-full bg-indigo-500 relative" style={{ width: `${progress}%` }}></div>
       </div>
+      */}
 
-      {/* Waveform Visualization Box */}
-      <div
-        className="h-[80px] bg-[#222222] rounded-2xl relative overflow-hidden cursor-pointer flex flex-col justify-center px-6 mx-2"
-        onClick={handleSeek}
-      >
-        <div className="flex items-center justify-between w-full h-[60%] gap-[2px] pointer-events-none">
-          {waveformPattern.map((height, i) => {
-            const isPlayed = (i / WAVEFORM_BARS) * 100 <= progress;
-            return (
+      <div className="flex items-center justify-between px-4 md:px-8 h-[88px] max-w-screen-2xl mx-auto">
+
+        {/* Left: Track Info & Art */}
+        <div className="flex items-center gap-4 w-[30%] min-w-[200px]">
+          <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] flex items-center justify-center border border-white/5 shrink-0 shadow-lg relative overflow-hidden group">
+            <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Music className="w-6 h-6 text-white/60" />
+          </div>
+          <div className="flex flex-col min-w-0 pr-2">
+            <h4 className="text-[14px] font-medium text-white/95 truncate tracking-wide">
+              {track.title || "Untitled AI Music"}
+            </h4>
+            <p className="text-[12px] text-white/40 truncate font-medium mt-0.5" title="AI Generated">
+              AI Generated
+            </p>
+          </div>
+        </div>
+
+        {/* Center: Controls & Timers */}
+        <div className="flex flex-col items-center justify-center max-w-[40%] flex-1 gap-1.5">
+          <div className="flex items-center gap-6 sm:gap-8">
+            <button className="text-white/30 hover:text-white transition-colors cursor-not-allowed">
+              <SkipBack size={20} className="fill-current" />
+            </button>
+            <button
+              onClick={togglePlay}
+              className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_4px_12px_rgba(255,255,255,0.1)]"
+            >
+              {isPlaying ? (
+                <Pause size={18} className="fill-black" />
+              ) : (
+                <Play size={18} className="fill-black ml-0.5" />
+              )}
+            </button>
+            <button className="text-white/30 hover:text-white transition-colors cursor-not-allowed">
+              <SkipForward size={20} className="fill-current" />
+            </button>
+            <button
+              onClick={() => setIsLooping(!isLooping)}
+              className={`transition-colors flex items-center justify-center p-2 rounded-full hover:bg-white/5 ${isLooping ? 'text-indigo-400' : 'text-white/40 hover:text-white/80'}`}
+              title="Toggle Loop"
+            >
+              <Repeat size={16} />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 w-full max-w-[500px] text-[11px] font-medium text-white/40 justify-center">
+            <span className="w-8 text-right tabular-nums">{formatTime(currentTime)}</span>
+            <div className="w-full h-1 bg-white/10 rounded-full cursor-pointer relative group/progress" onClick={handleSeek}>
+              {/* Visual playback line */}
               <div
-                key={i}
-                className="w-full rounded-full transition-all duration-150"
-                style={{
-                  height: `${height * 100}%`,
-                  backgroundColor: isPlayed ? 'rgba(168, 85, 247, 0.9)' : 'rgba(255, 255, 255, 0.15)', // Purple gradient color
-                  boxShadow: isPlayed ? '0 0 10px rgba(168, 85, 247, 0.3)' : 'none'
-                }}
-              />
-            );
-          })}
+                className="h-full bg-white group-hover/progress:bg-indigo-400 rounded-full relative transition-colors"
+                style={{ width: `${progress}%` }}
+              >
+                {/* Handle Knob */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover/progress:opacity-100 shadow-[0_0_10px_rgba(255,255,255,0.5)] translate-x-1/2 transition-opacity" />
+              </div>
+            </div>
+            <span className="w-8 text-left tabular-nums">{formatTime(duration)}</span>
+          </div>
         </div>
-      </div>
 
-      {/* Progress Line */}
-      <div className="mx-2 mt-6 cursor-pointer relative" onClick={handleSeek}>
-        <div className="w-full h-1 bg-white/10 rounded-full relative">
-          <div
-            className="h-full bg-white rounded-full absolute top-0 left-0"
-            style={{ width: `${progress}%` }}
-          />
-          <div
-            className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"
-            style={{ left: `calc(${progress}% - 7px)` }}
-          />
-        </div>
-      </div>
-
-      {/* Times */}
-      <div className="flex justify-between items-center mt-3 px-2 text-[12px] font-medium text-white/40 select-none">
-        <span>{formatTime(currentTime)}</span>
-        <span>{formatTime(duration)}</span>
-      </div>
-
-      {/* Controls Container */}
-      <div className="flex items-center justify-between mt-6 px-2">
-
-        {/* Left Controls */}
-        <div className="flex items-center gap-5">
-          <button
-            onClick={() => setIsLooping(!isLooping)}
-            className={`transition-colors flex items-center justify-center p-2 rounded-full hover:bg-white/5 ${isLooping ? 'text-white' : 'text-white/40 hover:text-white/80'}`}
-          >
-            <Repeat size={18} />
-          </button>
+        {/* Right: Volume & Actions */}
+        <div className="flex items-center justify-end gap-2 w-[30%] min-w-[150px]">
 
           <button
-            onClick={togglePlay}
-            className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+            onClick={handleDownload}
+            className="flex items-center justify-center p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-colors mr-2"
+            title="Download MP3"
           >
-            {isPlaying ? (
-              <Pause size={24} className="fill-black" />
-            ) : (
-              <Play size={24} className="fill-black ml-1" />
-            )}
+            <Download size={18} />
           </button>
 
-          <div className="flex items-center gap-2 group/vol">
+          <div className="hidden sm:flex items-center gap-2 group/vol justify-end">
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className="text-white/50 hover:text-white/90 transition-colors"
+              className="text-white/40 hover:text-white/90 transition-colors p-1"
             >
-              {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
             <input
               type="range"
@@ -216,19 +220,11 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
                 setVolume(parseFloat(e.target.value));
                 if (parseFloat(e.target.value) > 0) setIsMuted(false);
               }}
-              className="w-16 h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer ml-1"
+              className="w-20 lg:w-24 h-1 bg-white/20 hover:bg-white/30 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer transition-colors"
             />
           </div>
-        </div>
 
-        {/* Right Controls */}
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-white/70 hover:text-white transition-colors"
-        >
-          <Download size={18} />
-          Download
-        </button>
+        </div>
       </div>
     </div>
   );
