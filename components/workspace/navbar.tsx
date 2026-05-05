@@ -3,10 +3,15 @@
 import { useAuth } from "@/components/providers/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { Search, LogOut, User } from "lucide-react";
+import { Search, LogOut, User, X } from "lucide-react";
 import Link from "next/link";
 
-export function Navbar() {
+interface NavbarProps {
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+}
+
+export function Navbar({ searchQuery = "", onSearchChange }: NavbarProps) {
   const { user, signOut } = useAuth();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -34,9 +39,20 @@ export function Navbar() {
             </div>
             <input
               type="text"
-              className="block w-full h-10 rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white placeholder-white/30 outline-none transition-all hover:bg-white-[0.07] focus:border-white/20 focus:bg-white/10 focus:ring-2 focus:ring-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]"
+              value={searchQuery}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="block w-full h-10 rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-10 text-sm text-white placeholder-white/30 outline-none transition-all hover:bg-white-[0.07] focus:border-white/20 focus:bg-white/10 focus:ring-2 focus:ring-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]"
               placeholder="Search for tracks, moods, or genres..."
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => onSearchChange?.("")}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 

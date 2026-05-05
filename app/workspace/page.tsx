@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useDebounce } from "use-debounce";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/workspace/navbar";
 import { AudioPlayer } from "@/components/workspace/audio-player";
@@ -31,24 +32,58 @@ export default function WorkspacePage() {
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [playingTrack, setPlayingTrack] = useState<MusicTrack | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 400);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Fetch initial tracks and setup realtime
+  // Fetch initial tracks and on search change
   useEffect(() => {
     if (!user) return;
 
     const fetchMusics = async () => {
-      setIsLoadingLibrary(true);
-      const { data, error } = await supabase
+      // 스피너 시작은 입력 즉시 (handleSearchChange) 호출되므로 여기서 따로 true로 바꿀 필요는 없지만, 초기 로딩 방어선으로 남겨둠
+      setIsSearching(true);
+      if (musics.length === 0) setIsLoadingLibrary(true); // Only show big loader initially
+
+      let query = supabase
         .from("musics")
         .select("*")
-        .eq("user_id", user.id)
+        .neq("is_visible", false)
         .order("created_at", { ascending: false });
 
-      if (!error && data) setMusics(data as MusicTrack[]);
+      if (debouncedSearchQuery.trim()) {
+        // [전역 검색(Global Search)]
+        // 검색어가 있을 때는 내 곡뿐만 아니라 DB 전체(모든 유저)에서 곡을 필터링합니다.
+        const sq = debouncedSearchQuery.trim();
+        query = query.or(`title.ilike.%${sq}%,prompt.ilike.%${sq}%`);
+      } else {
+        // 검색어가 없을 때는 오직 내 보관함(Local Library)의 곡만 불러옵니다.
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data, error } = await query;
+
+      // 2) 인위적 지연으로 확실한 로딩 스피너 노출 확보 (UX 향상)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 3) 엄격한 순차적 상태 업데이트
+      // 반드시 setMusics로 데이터를 먼저 교체한 '다음'에 setIsSearching(false)를 수행
+      if (error) {
+        console.error("Supabase search error:", error);
+      } else if (data) {
+        setMusics(data as MusicTrack[]);
+      }
+
       setIsLoadingLibrary(false);
+      setIsSearching(false);
     };
 
     fetchMusics();
+  }, [user, supabase, debouncedSearchQuery]);
+
+  // Setup realtime subscription
+  useEffect(() => {
+    if (!user) return;
 
     const subscription = supabase
       .channel("musics_channel")
@@ -59,7 +94,12 @@ export default function WorkspacePage() {
             return [payload.new as MusicTrack, ...prev];
           });
         } else if (payload.eventType === "UPDATE") {
-          setMusics(prev => prev.map(item => item.id === payload.new.id ? payload.new as MusicTrack : item));
+          const updatedTrack = payload.new as any;
+          if (updatedTrack.is_visible === false) {
+            setMusics(prev => prev.filter(item => item.id !== updatedTrack.id));
+          } else {
+            setMusics(prev => prev.map(item => item.id === updatedTrack.id ? (updatedTrack as MusicTrack) : item));
+          }
         } else if (payload.eventType === "DELETE") {
           setMusics(prev => prev.filter(item => item.id !== payload.old.id));
         }
@@ -84,7 +124,8 @@ export default function WorkspacePage() {
   }
 
   const handleDelete = async (id: string, file_url?: string) => {
-    // 1. Optimistically hide from UI
+    // 1. Optimistically hide from UI (Soft Delete)
+    // 데이터는 DB에 안전하게 보관되어 있습니다. 언제든 복구 가능한 상태입니다.
     const previousMusics = [...musics];
     setMusics((prev) => prev.filter((m) => m.id !== id));
 
@@ -93,7 +134,8 @@ export default function WorkspacePage() {
     }
 
     try {
-      // 2. Delete from Storage first
+      // 2. Storage 파일 삭제 주석 처리 (실제 .mp3 파일은 서버 보존)
+      /*
       if (file_url && file_url.includes('supabase.co')) {
         try {
           const urlObj = new URL(file_url);
@@ -108,9 +150,10 @@ export default function WorkspacePage() {
           console.error("URL Parsing error:", e);
         }
       }
+      */
 
-      // 3. Delete from Database
-      const { error: dbError } = await supabase.from("musics").delete().eq("id", id);
+      // 3. Database Soft Delete (is_visible 플래그 false 전환)
+      const { error: dbError } = await supabase.from("musics").update({ is_visible: false }).eq("id", id);
       if (dbError) throw new Error(dbError.message);
 
     } catch (err: any) {
@@ -247,7 +290,13 @@ export default function WorkspacePage() {
 
   return (
     <main className="h-screen w-full bg-[#111] text-white flex flex-col items-center overflow-hidden relative selection:bg-indigo-500/30">
-      <Navbar />
+      <Navbar
+        searchQuery={searchQuery}
+        onSearchChange={(query) => {
+          setSearchQuery(query);
+          setIsSearching(true); // 입력 이벤트 발생 즉시 로딩 상태 진입
+        }}
+      />
 
       <div className="flex flex-col flex-1 relative z-10 w-full items-center h-full">
 
@@ -280,6 +329,8 @@ export default function WorkspacePage() {
                     playingTrackId={playingTrack?.id || null}
                     generationStatus={generationStatus}
                     errorMessage={errorMessage}
+                    searchQuery={searchQuery}
+                    isSearching={isSearching}
                   />
                 </div>
               </div>

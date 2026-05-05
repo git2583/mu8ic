@@ -21,7 +21,8 @@
     "react-dom": "19.2.3",
     "replicate": "^1.4.0",
     "tailwind-merge": "^3.5.0",
-    "tailwindcss": "^4.2.1"
+    "tailwindcss": "^4.2.1",
+    "use-debounce": "^10.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",

@@ -7,15 +7,20 @@ CREATE TABLE IF NOT EXISTS public.musics (
   prompt text,
   duration float,
   user_id uuid references auth.users(id) on delete cascade not null,
-  status text default 'GENERATING'
+  status text default 'GENERATING',
+  is_visible boolean default true
 );
+
+-- In case the table already exists, add the column if missing
+ALTER TABLE public.musics ADD COLUMN IF NOT EXISTS is_visible boolean default true;
 
 -- Enable Row Level Security
 ALTER TABLE public.musics ENABLE ROW LEVEL SECURITY;
 
 -- Apply policies for authenticated users
 DROP POLICY IF EXISTS "Users can view their own musics" ON public.musics;
-CREATE POLICY "Users can view their own musics" ON public.musics FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Public can view any musics" ON public.musics;
+CREATE POLICY "Public can view any musics" ON public.musics FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Users can insert their own musics" ON public.musics;
 CREATE POLICY "Users can insert their own musics" ON public.musics FOR INSERT WITH CHECK (auth.uid() = user_id);
